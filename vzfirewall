@@ -402,7 +402,7 @@ sub read_openvz_conf {
                 }
             }
             $data = join(" ",@ipv4);
-            $ops{"IP_ADDRESS6"} = join(" ",@ipv6);
+            $opts{"IP_ADDRESS6"} = join(" ",@ipv6);
         }
         $opts{$matches[$i + 1]} = $data;
     }
