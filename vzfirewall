@@ -388,6 +388,21 @@ sub read_openvz_conf {
         my $data = $matches[$i + 2];
         $data =~ s/^#//mg if $matches[$i];
         $data =~ s/'/"/sg;
+        if($matches[$i + 1] == "IP_ADDRESS")
+        {
+            my @values = split(' ', $data);
+            my @ipv6, @ipv4;
+            foreach (@values) {
+                 if (index($_, ':') != -1) {
+                    #found ipv6 address
+                    push(@ipv6,$_);
+                } else {
+                    push(@ipv4,$_);
+                }
+            }
+            $data = join(" ",@ipv4);
+            $ops{"IP_ADDRESS6"} = join(" ",@ipv6);
+        }
         $opts{$matches[$i + 1]} = $data;
     }
     return \%opts;
