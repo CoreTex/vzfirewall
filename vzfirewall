@@ -388,7 +388,7 @@ sub read_openvz_conf {
         my $data = $matches[$i + 2];
         $data =~ s/^#//mg if $matches[$i];
         $data =~ s/'/"/sg;
-        if($matches[$i + 1] == "IP_ADDRESS")
+        if($matches[$i + 1] eq "IP_ADDRESS")
         {
             my @values = split(' ', $data);
             my @ipv6 = ();
