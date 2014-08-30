@@ -391,7 +391,8 @@ sub read_openvz_conf {
         if($matches[$i + 1] == "IP_ADDRESS")
         {
             my @values = split(' ', $data);
-            my @ipv6, @ipv4;
+            my @ipv6 = ();
+            my @ipv4 = ();
             foreach (@values) {
                  if (index($_, ':') != -1) {
                     #found ipv6 address
