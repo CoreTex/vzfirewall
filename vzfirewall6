@@ -137,6 +137,12 @@ if ($opt{test}) {
 }
 
 sub do_apply {
+    my $kernel = `uname -r`;
+    my $isKernelVerion3 = 0;
+    if($kernel =~ /^3\..*openvz.*$/i)
+    {
+        $isKernelVersion3 = 1;
+    }
     my ($test_mode, $force) = @_;
     my ($deny_chain) = ($conf{'enable-logging'} ? 'vzfw-log-deny' : 'vzfw-deny');
 
@@ -158,15 +164,21 @@ sub do_apply {
     push @cmds, "# logging with DENY policy\n";
     push @cmds, "-A vzfw-log-deny -m state --state INVALID -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix \"[VZFW BLOCK] \"\n";
     push @cmds, "-A vzfw-log-deny -m state --state INVALID -j DROP\n";
-    push @cmds, "-A vzfw-log-deny -m addrtype --dst-type MULTICAST -j DROP\n";
-    push @cmds, "-A vzfw-log-deny -m addrtype --dst-type BROADCAST -j DROP\n";
+    if($isKernelVersion3)
+    {
+        push @cmds, "-A vzfw-log-deny -m addrtype --dst-type MULTICAST -j DROP\n";
+        push @cmds, "-A vzfw-log-deny -m addrtype --dst-type BROADCAST -j DROP\n";
+    }
     push @cmds, "-A vzfw-log-deny -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix \"[VZFW BLOCK] \"\n";
     push @cmds, "-A vzfw-log-deny -j DROP\n";
     #push @cmds, "-A vzfw-log-deny -j REJECT --reject-with icmp6-adm-prohibited\n";
     push @cmds, "# DENY policy\n";
     push @cmds, "-A vzfw-deny -m state --state INVALID -j DROP\n";
-    push @cmds, "-A vzfw-deny -m addrtype --dst-type MULTICAST -j DROP\n";
-    push @cmds, "-A vzfw-deny -m addrtype --dst-type BROADCAST -j DROP\n";
+    if($isKernelVersion3)
+    {
+        push @cmds, "-A vzfw-deny -m addrtype --dst-type MULTICAST -j DROP\n";
+        push @cmds, "-A vzfw-deny -m addrtype --dst-type BROADCAST -j DROP\n";
+    }
     push @cmds, "-A vzfw-deny -j DROP\n";
     #push @cmds, "-A vzfw-deny -j REJECT --reject-with icmp6-adm-prohibited\n";
     push @cmds, "\n\n";
@@ -175,7 +187,10 @@ sub do_apply {
     push @cmds, "-A OUTPUT -o lo -j ACCEPT\n";
     push @cmds, "-A FORWARD -i lo -j ACCEPT\n";
     push @cmds, "\n##\n## Stop spoofing of our addresses.\n##\n";
-    push @cmds, "-A INPUT -m addrtype --src-type LOCAL -j $deny_chain\n";
+    if($isKernelVersion3)
+    {
+        push @cmds, "-A INPUT -m addrtype --src-type LOCAL -j $deny_chain\n";
+    }
     for my $chain ("INPUT", "OUTPUT", "FORWARD") {
         push @cmds, "\n##\n## Firewall states ($chain).\n##\n";
         push @cmds, "-A $chain -m state --state INVALID -j $deny_chain\n";
