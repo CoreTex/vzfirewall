@@ -24,7 +24,7 @@ my @ICMP_TYPES;
 my @FAILSAFE_ADDRS;
 GetOptions(\%opt, 'help|h', 'version|V', 'apply|a', 'test|t',
     'vzfw-conf|conf|c=s', 'force|f', 'verbose|v',
-    'iptables-rules|rules=s', 'openvz-conf-dir|dir|d=s',
+    'ip6tables-rules|rules=s', 'openvz-conf-dir|dir|d=s',
     'icmp-types=s{1,}' => \@ICMP_TYPES,
     'failsafe-addrs=s{1,}' => \@FAILSAFE_ADDRS,
     'enable-logging|l',
@@ -68,19 +68,19 @@ unless ($conf{'openvz-conf-dir'} && -d $conf{'openvz-conf-dir'}) {
 my ($RULES_FALLBACK) = dirname($conf{'openvz-conf-dir'}) . "/vzfirewall.rules";
 my $RULES_FALLBACK_USED = 0;
 
-my $IPTABLES;
-if ($opt{'iptables-rules'}) {
-    $IPTABLES = $opt{'iptables-rules'};
-} elsif ($conf{'iptables-rules'}) {
-    $IPTABLES = $conf{'iptables-rules'};
+my $ip6tables;
+if ($opt{'ip6tables-rules'}) {
+    $ip6tables = $opt{'ip6tables-rules'};
+} elsif ($conf{'ip6tables-rules'}) {
+    $ip6tables = $conf{'ip6tables-rules'};
 } else {
-    ($IPTABLES) = grep { -f $_ } (
-        "/etc/sysconfig/iptables",  # RHEL systems
-        "/etc/iptables/rules.v4",   # iptables-persist
+    ($ip6tables) = grep { -f $_ } (
+        "/etc/sysconfig/ip6tables",  # RHEL systems
+        "/etc/ip6tables/rules.v6",   # ip6tables-persist
         $RULES_FALLBACK             # vzfirewall fallback
     );
-    unless ($IPTABLES) {
-        $IPTABLES = $RULES_FALLBACK;
+    unless ($ip6tables) {
+        $ip6tables = $RULES_FALLBACK;
         $RULES_FALLBACK_USED = 1;
     }
 }
@@ -114,15 +114,15 @@ if ($FAILSAFE_ADDRS[0]) {
 
 if ($RULES_FALLBACK_USED && $opt{verbose}) {
     print STDERR qq(
-NOTICE:  vzfirewall did not find any persistent iptables rules locations.
-vzfirewall will write iptables rules to:  $RULES_FALLBACK
+NOTICE:  vzfirewall did not find any persistent ip6tables rules locations.
+vzfirewall will write ip6tables rules to:  $RULES_FALLBACK
 
 You will need to arrange for those rules to be loaded at system boot time,
 eg. by adding this command to system startup scripts:
 
-        iptables-restore < $RULES_FALLBACK
+        ip6tables-restore < $RULES_FALLBACK
 
-Or you may find a package such as iptables-persistent for your OS to handle
+Or you may find a package such as ip6tables-persistent for your OS to handle
 this for you.
 
 );
@@ -281,8 +281,8 @@ sub do_apply {
     my $cmds = join "", @cmds;
 
     my $prev = "";
-    open(local *F, ">>", $IPTABLES) and close(F);
-    if (open(local *F, $IPTABLES)) {
+    open(local *F, ">>", $ip6tables) and close(F);
+    if (open(local *F, $ip6tables)) {
         local $/;
         $prev = <F>;
         close(F);
@@ -290,7 +290,7 @@ sub do_apply {
 
     if ($prev ne $cmds) {
         print STDERR "--DIFF--\n";
-        open(local *P, "| diff $IPTABLES - >&2");
+        open(local *P, "| diff $ip6tables - >&2");
         print P $cmds;
         close(P);
         print STDERR "--RULES--\n" if $test_mode;
@@ -301,18 +301,18 @@ sub do_apply {
     } else {
         if ($force || $prev ne $cmds) {
             print STDERR "Testing new rules...\n";
-            open(local *P, "| iptables-restore -t");
+            open(local *P, "| ip6tables-restore -t");
             print P $cmds;
             if (!close(P)) {
                 die "Test failed. Apply nothing.\n";
             }
             # Use cp instead of mv, because this file could be a symlink!
-            system("/bin/cp", $IPTABLES, $IPTABLES . ".bak." . strftime("%Y-%m-%d_%H-%M-%S", localtime(time)));
-            open(local *F, ">", $IPTABLES) or die "Cannot create $IPTABLES: $!\n";
+            system("/bin/cp", $ip6tables, $ip6tables . ".bak." . strftime("%Y-%m-%d_%H-%M-%S", localtime(time)));
+            open(local *F, ">", $ip6tables) or die "Cannot create $ip6tables: $!\n";
             print F $cmds;
             close(F);
             print STDERR "Applying new rules...\n";
-            system("iptables-restore < $IPTABLES");
+            system("ip6tables-restore < $ip6tables");
         } else {
             die "Nothing is changed.\n";
         }
@@ -392,14 +392,14 @@ sub read_openvz_conf {
         {
             # remove ipv6 addresses
             my @values = split(' ', $data);
-            my @ipv4 = ();
+            my @ipv6 = ();
             foreach (@values) {
-                 if (index($_, '.') != -1 && index($_, ':') == -1) {
-                    #found ipv4 address
-                    push(@ipv4,$_);
+                 if (index($_, '.') == -1 && index($_, ':') != -1) {
+                    #found ipv6 address
+                    push(@ipv6,$_);
                 }
             }
-            $data = join(" ",@ipv4);
+            $data = join(" ",@ipv6);
         }
         $opts{$matches[$i + 1]} = $data;
     }
@@ -436,9 +436,9 @@ sub read_vzfirewall_conf {
                         $$cfg{'openvz-conf-dir'} = $v;
                     }
                 }
-                case "IPTABLES_RULES" {
-                    unless ($$cli{'iptables-rules'}) {
-                        $$cfg{'iptables-rules'} = $v;
+                case "ip6tables_RULES" {
+                    unless ($$cli{'ip6tables-rules'}) {
+                        $$cfg{'ip6tables-rules'} = $v;
                     }
                 }
                 case "ICMP_TYPES" {
@@ -505,11 +505,11 @@ Output vzfirewall version and exit.
 
 =item B<-a>, B<--apply>
 
-Apply iptables rules in openvz container *.conf files (FIREWALL directives).
+Apply ip6tables rules in openvz container *.conf files (FIREWALL directives).
 
 =item B<-t>, B<--test>
 
-Preview iptables rules in openvz container *.conf files without activation.
+Preview ip6tables rules in openvz container *.conf files without activation.
 
 =back
 
@@ -523,15 +523,15 @@ Location of vzfirewall configuration file.
 
 =item B<-f>, B<--force>
 
-Force rewrite of iptables rules even if rules are unchanged.
+Force rewrite of ip6tables rules even if rules are unchanged.
 
 =item B<-d>, B<--dir>, B<--openvz-conf-dir>=I<PATH>
 
 Specify directory containing per-container .conf files.
 
-=item B<--rules>, B<--iptables-rules>=I<PATH>
+=item B<--rules>, B<--ip6tables-rules>=I<PATH>
 
-Store iptables rules in this file.
+Store ip6tables rules in this file.
 
 =item B<-v>, B<--verbose>
 
@@ -593,12 +593,12 @@ The location of openvz container configuration files.
 
 Corresponds to --openvz-conf-dir command-line option.
 
-=item C<IPTABLES_RULES>
+=item C<ip6tables_RULES>
 
-File that iptables rules will be written to.  This file needs to be
-loaded using iptables-restore on system startup.
+File that ip6tables rules will be written to.  This file needs to be
+loaded using ip6tables-restore on system startup.
 
-Corresponds to --iptables-rules command-line option.
+Corresponds to --ip6tables-rules command-line option.
 
 =item C<ICMP_TYPES>
 
@@ -627,10 +627,10 @@ Corresponds to the --enable-logging command-line option.
 =head2 C<vzfirewall.conf>
 
 The following C<vzfirewall.conf> is equivalent to the default settings
-on a C<debian> system using C<iptables-persistent> to load iptables rules:
+on a C<debian> system using C<ip6tables-persistent> to load ip6tables rules:
 
  OPENVZ_CONF_DIR = /etc/vz/conf
- IPTABLES_RULES  = /etc/iptables/rules.v4
+ ip6tables_RULES  = /etc/ip6tables/rules.v6
  ICMP_TYPES = 3 4 11 12 8
  FAILSAFE_ADDRS = any
  ENABLE_LOGGING = false
@@ -687,9 +687,9 @@ Default vzfirewall configuration file locations.
 
 Default location of OpenVZ container .conf scripts.
 
-=item C</etc/sysconfig/iptables>, C</etc/iptables/rules.v4>, C</etc/vz/vzfirewall.rules>
+=item C</etc/sysconfig/ip6tables>, C</etc/ip6tables/rules.v6>, C</etc/vz/vzfirewall.rules>
 
-Default locations searched for stored iptables rules file.
+Default locations searched for stored ip6tables rules file.
 
 =back
 
@@ -698,7 +698,7 @@ Default locations searched for stored iptables rules file.
 
 =over
 
-=item L<iptables(8)>
+=item L<ip6tables(8)>
 
 administration tool for IPv4 packet filtering and NAT
 
