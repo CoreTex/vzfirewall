@@ -138,10 +138,11 @@ if ($opt{test}) {
 
 sub do_apply {
     my $kernel = `uname -r`;
-    my $isKernelVerion3 = 0;
     if($kernel =~ /^3\..*openvz.*$/i)
     {
-        $isKernelVersion3 = 1;
+        my $isKernelVersion3 = 1;
+    } else {
+        my $isKernelVerion3 = 0;
     }
     my ($test_mode, $force) = @_;
     my ($deny_chain) = ($conf{'enable-logging'} ? 'vzfw-log-deny' : 'vzfw-deny');
