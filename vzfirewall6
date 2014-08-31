@@ -100,7 +100,8 @@ if ($opt{version}) {
 if ($ICMP_TYPES[0]) {
     $conf{'icmp6-types'} = \@ICMP_TYPES;
 } elsif (! $conf{'icmp6-types'}) {
-    @ICMP_TYPES = (3, 4, 11, 12, 8,);
+    #@ICMP_TYPES = (3, 4, 11, 12, 8,);
+    @ICMP_TYPES = ("destination-unreachable", "packet-too-big", "time-exceeded", "parameter-problem", "echo-request", "echo-reply", "router-solicitation", "router-advertisement", "neighbour-solicitation", "neighbour-advertisement", "redirect");
     $conf{'icmp6-types'} = \@ICMP_TYPES;
 }
 
