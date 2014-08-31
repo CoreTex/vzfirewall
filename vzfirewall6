@@ -181,7 +181,7 @@ sub do_apply {
 
         push @cmds, "# Allowed icmp types\n";
         for my $type ( @{$conf{'icmp6-types'}} ) {
-            push @cmds, "-A $chain -p icmp --icmp-type $type -j ACCEPT\n";
+            push @cmds, "-A $chain -p icmp --icmpv6-type $type -j ACCEPT\n";
         }
     }
     if ( grep { /any/i } @{$conf{'failsafe-addrs'}} ) {
@@ -544,7 +544,7 @@ You can change the default firewall behavior with the following options:
 
 =over 20
 
-=item B<--icmp-types>=I<types>
+=item B<--icmpv6-types>=I<types>
 
 Specify allowed icmp types.
 
@@ -605,7 +605,7 @@ Corresponds to --ip6tables-rules command-line option.
 
 Allowed icmp types.
 
-Corresponds to --icmp-types command-line option.
+Corresponds to --icmpv6-types command-line option.
 
 =item C<FAILSAFE_ADDRS>
 
