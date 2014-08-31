@@ -15,7 +15,7 @@ use POSIX 'strftime';
 use Getopt::Long 2.25 qw(:config posix_default no_ignore_case);
 use Switch;
 
-my $VERSION = "1.14, 2014-01-27";
+my $VERSION = "1.15, 2014-08-31";
 
 my %conf = ();  # running configuration (defaults + config file + cli opts)
 my %opt = ();   # command line options
@@ -390,19 +390,16 @@ sub read_openvz_conf {
         $data =~ s/'/"/sg;
         if($matches[$i + 1] eq "IP_ADDRESS")
         {
+            # remove ipv6 addresses
             my @values = split(' ', $data);
-            my @ipv6 = ();
             my @ipv4 = ();
             foreach (@values) {
-                 if (index($_, ':') != -1) {
-                    #found ipv6 address
-                    push(@ipv6,$_);
-                } else {
+                 if (index($_, '.') != -1 && index($_, ':') == -1) {
+                    #found ipv4 address
                     push(@ipv4,$_);
                 }
             }
             $data = join(" ",@ipv4);
-            $opts{"IP_ADDRESS6"} = join(" ",@ipv6);
         }
         $opts{$matches[$i + 1]} = $data;
     }
