@@ -470,9 +470,9 @@ sub read_vzfirewall_conf {
 my %resolved = ();
 sub resolve {
     my ($host) = @_;
-    return [ $host ] if $host =~ /^\d+\.\d+\.\d+\.\d+|^\*$/s;
+    return [ $host ] if $host =~ /^((?:[0-9a-f]{1,4}:+)+[0-9a-f]{1,4})$/i;
     return $resolved{$host} if $resolved{$host};
-    my @ips = (`host $host.`||"") =~ /(\d+\.\d+\.\d+\.\d+$)/mg or die "Cannot resolve $host\n";
+    my @ips = (`host $host.`||"") =~ /((?:[0-9a-f]{1,4}:+)+[0-9a-f]{1,4})/gi or die "Cannot resolve $host\n";
     foreach (@ips) {
         die "Invalid address $_ resolved for $host\n" if /^(128|255)/s;
     }
